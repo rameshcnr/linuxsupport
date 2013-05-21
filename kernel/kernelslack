@@ -1,0 +1,67 @@
+#!/bin/sh
+
+# Slackware build script for kernel
+
+CWD=`pwd`
+
+SOURCE=kernel.org
+
+PRODUCT=kernel
+
+VERSION=2.6.34
+
+ARCH=${ARCH:-x86_64}
+BUILD=${BUILD:-1}
+if [ -z "$ARCH" ]; then
+  case "$( uname -m )" in
+    i?86) ARCH=i486 ;;
+    arm*) ARCH=arm ;;
+       *) ARCH=$( uname -m ) ;;
+  esac
+fi
+$CWD
+
+#The install directory
+INSTALLDIR=$CWD/package/kernel-build
+mkdir -p $INSTALLDIR
+
+#The kernel Directory
+PKG=/pkg/kernel.org/kenel/2.6.34
+
+#Create the package directory
+mkdir -p $PKG
+PKG=/pkg/$SOURCE/$PRODUCT/$VERSION
+mkdir -p $INSTALLDIR$PKG
+$CWD
+cd /tmp
+tar -xvf linux-2.6.34.tar.gz
+mv linux-2.6.34 /usr/src
+cd /usr/src
+cd linux-2.6.34
+cp /tmp/.config /usr/src/linux-2.6.34
+cd /usr/src/linux-2.6.34
+make 
+make modules 
+make modules_install
+make install
+cd /boot
+mkinitrd -c -m ahci:ext3 -k 2.6.34
+cd /usr/src
+# Create the sym link
+cp -r linux-2.6.34 $INSTALLDIR$PKG
+cd /lib/
+cp -r modules/ $INSTALLDIR$PKG
+cd /boot
+cp -r System.map $INSTALLDIR$PKG/
+cp -r vmlinuz $INSTALLDIR$PKG/
+cp -r initrd.gz  $INSTALLDIR$PKG/
+cp -r initrd-tree $INSTALLDIR$PKG/
+
+# Create the install directory
+mkdir -p $INSTALLDIR/install
+zcat $CWD/slack-desc > $PKG/install/slack-desc
+zcat $CWD/doinst.sh.gz > $INSTALLDIR/install/doinst.sh
+
+# Build the package
+cd $INSTALLDIR
+makepkg -l y -c n $CWD/Kernel-$VERSION-$ARCH-$BUILD.tgz
