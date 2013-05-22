@@ -1,0 +1,2043 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1038\cocoasubrtf250
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\froman\fcharset0 Times-Roman;\f2\fmodern\fcharset0 Courier;
+\f3\fmodern\fcharset0 Courier-Bold;\f4\fmodern\fcharset0 Courier-Oblique;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue235;\red183\green0\blue171;\red104\green6\blue97;
+\red85\green0\blue38;\red83\green83\blue83;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww16200\viewh12280\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+
+\f0\fs24 \cf0 								
+\b \ul SSH-AGENT
+\b0 \ulnone \
+\
+
+\b \ul ssh-agent.sh
+\b0 \ulnone \
+\
+SSHAGENT=/usr/bin/ssh-agent\
+SSHAGENTARGS="-s"\
+SSH_ENV="/root/.ssh/environment"\
+\
+# start the ssh-agent\
+function start_agent \{\
+    #echo "Initializing new SSH agent..."\
+        # spawn ssh-agent\
+            ssh-agent | sed 's/^echo/#echo/' > "$SSH_ENV"\
+                echo succeeded\
+                    chmod 600 "$SSH_ENV"\
+                        . "$SSH_ENV" > /dev/null\
+                            ssh-add\
+                    \}\
+\
+\
+# Source SSH settings, if applicable\
+\
+if [ -f "$\{SSH_ENV\}" ]; then\
+   . "$\{SSH_ENV\}" > /dev/null\
+ #ps $\{SSH_AGENT_PID\} doesn't work under cywgin\
+     ps -ef | grep $\{SSH_AGENT_PID\} | grep ssh-agent$ > /dev/null || \{\
+     start_agent;\
+   \}\
+ else\
+ start_agent;\
+ fi\
+\
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\
+\
+\
+					
+\b 					\ul Git -hook\ulnone \
+\
+\ul git slackbuild\ulnone \
+
+\b0 \
+\
+# !/bin/sh\
+\
+#The current Directory\
+CWD=`pwd`\
+\
+# The source directory\
+SOURCE=git-cms.org\
+\
+#The product\
+PRODUCT=git\
+\
+#The version\
+VERSION=1.7.0.2\
+\
+ARCH=$\{ARCH:-i386\}\
+\
+BUILD=$\{BUILD:-1\}\
+\
+\
+#The package Directory\
+PKG=/pkg/git-scm.com/$PRODUCT/$VERSION\
+\
+#The Installation directory\
+INSTALLDIR=$CWD/package/$PRODUCT\
+\
+#Create the package directory\
+mkdir -p $PKG\
+\
+#Move the current Directory\
+cd $CWD\
+#Extract the application\
+tar xvf git-$VERSION.tar.gz\
+\
+#Move to the source folder\
+cd git-$VERSION\
+\
+\
+#---------------------------------------------------------------------------\
+#\
+#                       Configure the application\
+#\
+#---------------------------------------------------------------------------\
+\
+./configure \\\
+ --prefix=/pkg/git-scm.com/git/1.7.0.2 \\\
+\
+\
+#build the tokyocabinet and exit if it fails\
+\
+make -j4 2> $CWD/make.err || exit\
+\
+#Install tokyocabinet\
+make DESTDIR=$INSTALLDIR\
+\
+#Install tokyocabinet\
+make install DESTDIR=$INSTALLDIR\
+\
+#Move the slack-desc file to the install directory\
+cat $CWD/slack-desc > $INSTALLDIR/install/slack-desc\
+#Create the install directory\
+mkdir -p $INSTALLDIR/install\
+\
+#cd $INSTALLDIR/usr/local\
+\
+\
+# Build the package\
+makepkg -l y -c n $CWD/$PRODUCT-$VERSION-i386.tgz\
+\
+cd $CWD\
+\
+**********************************************************************************************************************************************\
+\
+doinst.sh\
+\
+# Install the info files for this package\
+echo "executing doinst.sh"\
+\
+CWD=`pwd`\
+\
+if [ -r /pkg/git-scm.com/git/1.7.0.2/bin/git ]\
+then\
+ cd usr/bin\
+ ln -sf /pkg/git-scm.com/git/1.7.0.2/bin/git\
+else\
+ if [ -r /pkg/git-scm.com/git/1.7.0.2/bin/git/git-cvsserver ]\
+ then\
+  cd /usr/bin\
+  ln -sf /pkg/git-scm.com/git/1.7.0.2/bin/git/git-cvsserver ]\
+ fi\
+fi\
+\
+\
+\pard\pardeftab720\sa280\ql\qnatural
+{\field{\*\fldinst{HYPERLINK "http://www.deanoj.co.uk/programming/git/using-git-and-a-post-receive-hook-script-for-auto-deployment/"}}{\fldrslt 
+\f1\b\fs36 \cf2 \ul \ulc2 Using Git and a post-receive hook script for auto deployment}}
+\f1\b\fs36 \
+\pard\pardeftab720\sa240\ql\qnatural
+
+\b0\fs24 \cf0 Set up a remote Git repositiory to automatically checkout to a working tree after a 
+\f2 git push
+\f1  command. Useful for the auto deployment of web site files on a web server.\
+Create a bare GIT repository:\
+\pard\pardeftab720\ql\qnatural
+
+\f3\b \cf3 mkdir
+\f2\b0 \cf0  project.git 
+\f3\b &&
+\f2\b0  
+\f3\b \cf4 cd
+\f2\b0 \cf0  project.git\
+git init \cf5 --bare\cf0 \
+\pard\pardeftab720\sa240\ql\qnatural
+
+\f1 \cf0 Create a detached work tree:\
+\pard\pardeftab720\ql\qnatural
+
+\f3\b \cf3 mkdir
+\f2\b0 \cf0  
+\f3\b /
+\f2\b0 home
+\f3\b /
+\f2\b0 user
+\f3\b /
+\f2\b0 myproject\
+git config core.worktree 
+\f3\b /
+\f2\b0 home
+\f3\b /
+\f2\b0 user
+\f3\b /
+\f2\b0 myproject --(/srv/httpd)\
+git config core.bare 
+\f3\b \cf3 false
+\f2\b0 \cf0 \
+git config receive.denycurrentbranch ignore\
+\pard\pardeftab720\sa240\ql\qnatural
+
+\f1 \cf0 Example 
+\f2 hooks/post-receive
+\f1  script:\
+\pard\pardeftab720\ql\qnatural
+
+\f4\i \cf6 #!/bin/sh
+\f2\i0 \cf0 \
+git checkout \cf5 -f\cf0 \
+\pard\pardeftab720\sa240\ql\qnatural
+
+\f1 \cf0 Now when you push to your remote repository, the post-receive script will run a checkout of the latest files to you working tree.
+\f2 \
+\pard\pardeftab720\ql\qnatural
+\cf0 \
+mkdir (git folder)\
+\
+git --bare init\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+
+\f0 \cf0 \
+post-receive hooks\
+\
+echo "Running post-received hook..."\
+cd /srv/httpd/application\
+git --git-dir=/srv/httpd/application/.git checkout -f\
+echo "Bundle Update....."\
+exec /etc/rc.d/rc.bundle start\
+\
+\
+\pard\pardeftab720\sa320\ql\qnatural
+
+\f1\b\fs28 \cf0 Login the client Machine first commit:-\
+\pard\pardeftab720\ql\qnatural
+
+\f2\b0\fs24 \cf0 mkdir testing\
+cd testing\
+git init\
+touch README\
+git add README\
+git commit -m 'first commit'\
+git remote add origin ssh://git@(remote machine IP address)/home/git/example.git\
+git push origin master\
+\
+=====================================================================================================\
+\
+  							
+\f3\b memcache
+\f2\b0 \
+
+\f3\b rc.memcache
+\f2\b0 \
+\
+#!/bin/sh\
+case "$1" in\
+start) /pkg/memcache.com/memcached/1.4.10/bin/memcached -d -u root -m 3072  -p 11211\
+;;\
+stop)  killall memcached\
+;;\
+esac\
+\
+\
+memcache.slackbuild\
+\
+#!/bin/sh\
+# Build and install memchche on Slackware\
+\
+# -----------------------------------------------------------------------------\
+#\
+# variable initialization\
+#\
+# -----------------------------------------------------------------------------\
+\
+# current directory\
+CWD=`pwd`\
+\
+# the soucce of the product\
+SOURCE=memcache.com\
+\
+# the package  name\
+PRODUCT=memcached\
+\
+# the product version\
+VERSION=1.4.10\
+\
+# the architecture\
+ARCH=$\{ARCH:-x86_64\}\
+\
+# the build number\
+BUILD=$\{BUILD:-1\}\
+\
+# the package directory\
+PKG=/pkg/$SOURCE/$PRODUCT/$VERSION\
+INSTALLDIR=$CWD/package/memcached\
+\
+# -----------------------------------------------------------------------------\
+#\
+# build the package\
+#\
+# -----------------------------------------------------------------------------\
+\
+# move to the current directory\
+cd $CWD\
+\
+\
+# extract the source\
+tar zxvf  $CWD/libevent-1.4.8-stable.tar.gz\
+\
+# move to the source folder\
+cd libevent-1.4.8-stable\
+\
+#---------------------------------------------------------------------------\
+#\
+#                       Configure the application\
+#\
+#---------------------------------------------------------------------------\
+\
+./configure \\\
+ --prefix=$PKG \\\
+\
+#build the memcahed and exit if it fails\
+make -j3 || exit 1\
+\
+#Install memcached\
+make DESTDIR=$INSTALLDIR\
+\
+#Install memcached\
+make install DESTDIR=$INSTALLDIR\
+\
+cd $CWD\
+\
+#Extract the memcached application\
+tar zxvf memcached-1.4.10.tar.gz\
+\
+cd $CWD\
+\
+cd memcached-1.4.10\
+\
+./configure \\\
+ --prefix=$PKG \\\
+\
+make DESTDIR=$INSTALLDIR\
+make install DESTDIR=$INSTALLDIR\
+\
+#cd $CWD\
+#tar -xvf memcache-2.2.5.tar\
+#cd memcache-2.2.5\
+#phpize\
+#./configure \\\
+#3 --prefix=$PKG \\\
+#make DESTDIR=$INSTALLDIR\
+#make install DESTDIR=$INSTALLDIR\
+\
+mkdir -p /var/db/mongodb/a\
+mkdir -p /var/db/mongodb/b\
+mkdir -p /var/db/mongodb/config\
+\
+cp memcached $INSTALLDIR$PKG/bin\
+cp memcached-debug $INSTALLDIR$PKG/bin\
+\
+\
+# change the package directory\
+cd $INSTALLDIR\
+mkdir install\
+cd $CWD\
+cp rc.memcache $INSTALLDIR$PKG/bin\
+\
+zcat $CWD/doinst.sh.gz > $INSTALLDIR/install/doinst.sh\
+cat $CWD/slack-desc > $INSTALLDIR/install/slack-desc\
+# Change the package Directory\
+cd $INSTALLDIR\
+\
+\
+\
+# Build the package\
+makepkg -l n -c n $CWD/$PRODUCT-$VERSION-x86_64.tgz\
+\
+\
+-----------------------------------------------------------------------------------------------------\
+\
+							Mongodb\
+\
+rc.mogodb\
+\
+!/bin/sh\
+case "$1" in\
+start) /pkg/mongodb.org/mongodb/2.0.1/bin/mongod --config /etc/mongodb/mongodb.conf\
+;;\
+stop)  killall mongod\
+;;\
+esac\
+\
+mongodb.conf\
+\
+#!/bin/sh\
+dbpath = /var/db/mongod\
+logpath = /var/log/mongodb.log\
+logappend = true\
+bind_ip = 127.0.0.1\
+port = 27017\
+fork = true\
+auth = true\
+# noauth = true\
+---------------------------------------------------------------------------------------------------------\
+#!/bin/sh\
+\
+CWD=`pwd`\
+\
+SOURCE=mongodb.org\
+\
+PRODUCT=mongodb\
+\
+VERSION=2.0.1\
+\
+ARCH=$\{ARCH:-x86_64\}\
+\
+BUILD=$\{BUILD:-1\}\
+\
+\
+#The package Directory\
+PKG=/pkg/mongodb.org/mongodb/2.0.1\
+\
+#Create the package directory\
+mkdir -p $PKG\
+\
+#The install directory\
+INSTALLDIR=$CWD/package/mongodb\
+mkdir -p $INSTALLDIR/mongodb\
+mkdir -p $INSTALLDIR$PKG\
+\
+#Gem installation\
+\
+\
+#Move the current Directory\
+cd $CWD\
+mkdir $INSTALLDIR\
+\
+#Extract the application\
+\
+tar -xvf mongodb-linux-x86_64-2.0.1.tgz\
+\
+mkdir -p $INSTALLDIR$PKG/bin\
+mkdir -p $INSTALLDIR$PKG/include\
+mkdir -p $INSTALLDIR$PKG/lib\
+cd mongodb-linux-x86_64-2.0.1/\
+cd bin/\
+cp * $INSTALLDIR$PKG/bin/\
+cd $CWD\
+cp mongodb $INSTALLDIR$PKG/bin/\
+cp rc.mongo $INSTALLDIR$PKG/bin/\
+cd $INSTALLDIR\
+\
+mkdir -p $INSTALLDIR/install\
+zcat $CWD/doinst.sh.gz > $INSTALLDIR/install/doinst.sh\
+cat $CWD/slack-desc > $INSTALLDIR/install/slack-desc\
+\
+# Build the package\
+makepkg -l y -c n $CWD/$PRODUCT-$VERSION-x86_64.tgz\
+\
+cd $CWD\
+\
+--------------------------------------------------------------------------------------------------------\
+doinsh.sh\
+\
+# Install the info files for this package\
+echo "executing doinst.sh"\
+\
+# get the current working directory\
+CWD=`pwd`\
+\
+if [ -r /pkg/mongodb.org/mongodb/2.0.1/bin/mongod ]\
+then\
+ cd usr/bin\
+ ln -sf /pkg/mongodb.org/mongodb/2.0.1/bin/mongod\
+fi\
+\
+if [ -r /pkg/mongodb.org/mongodb/2.0.1/bin/mongo  ]\
+ then\
+  cd /usr/bin\
+  ln -sf /pkg/mongodb.org/mongodb/2.0.1/bin/mongo  ]\
+fi\
+\
+if [ -r /pkg/mongodb.org/mongodb/2.0.1/bin/mongos ]\
+then\
+ cd usr/bin\
+ ln -sf /pkg/mongodb.org/mongodb/2.0.1/bin/mongos\
+fi\
+\
+if [ -x /pkg/mongodb.org/mongodb/2.0.1/bin/mongodb.conf ]\
+then\
+ cd /pkg/mongodb.org/mongodb/2.0.1/bin/\
+ mv mongodb.conf /etc/mongodb/\
+fi\
+if [ -x /pkg/mongodb.org/mongodb/2.0.1/bin/rc.mongo ]\
+then\
+ cd /pkg/mongodb.org/mongodb/2.0.1/bin/\
+ mv rc.mongo /etc/rc.d/\
+fi\
+\
+==========================================================================================================\
+\
+								Nginx\
+\
+ngind.slackbuild\
+\
+#!/bin/sh\
+\
+#The current directory\
+CWD=`pwd`\
+\
+# The source Directory\
+SOURCE=nginx.org\
+\
+#The Product\
+PRODUCT=nginx\
+\
+#The Version\
+VERSION=1.1.4\
+\
+ARCH=$\{ARCH:-x86_64\}\
+BUILD=$\{BUILD:-1\}\
+\
+#The package Directory\
+PKG=/pkg/nginx.org/nginx/1.1.4\
+\
+#The Installation Directory\
+INSTALLDIR=$CWD/package/$PRODUCT\
+mkdir -p $INSTALLDIR/$PRODUCT\
+mkdir -p $INSTALLDIR$PKG\
+\
+# Create the package directory\
+mkdir -p $PKG\
+\
+#Move the Current Directory\
+cd $CWD\
+#Extract the application\
+tar -xvf nginx-1.1.4.tar.gz\
+\
+#Move to the source folder\
+cd nginx-1.1.4\
+\
+#---------------------------------------------------------------------------\
+#\
+#                       Configure the application\
+#\
+#---------------------------------------------------------------------------\
+\
+# Configure:\
+./configure \\\
+  --prefix=/pkg/nginx.org/nginx/1.1.4 \\\
+  --with-http_stub_status_module \\\
+  --with-http_ssl_module\
+\
+# Build and install:\
+make\
+make install DESTDIR=$INSTALLDIR\
+\
+cd $CWD\
+cp rc.nginx $INSTALLDIR$PKG/conf\
+cp nginx.conf $INSTALLDIR$PKG/conf\
+\
+# change the package directory\
+cd $INSTALLDIR\
+mkdir install\
+\
+zcat $CWD/doinst.sh.gz > $INSTALLDIR/install/doinst.sh\
+cat $CWD/slack-desc > $INSTALLDIR/install/slack-desc\
+\
+makepkg -l y -c n $CWD/$PRODUCT-$VERSION-x86_64.tgz\
+\
+\
+*******************************************************************************************************\
+\
+rc.nginx\
+\
+#!/bin/sh\
+#\
+# nginx - this script starts and stops the nginx daemin\
+# Taken from http://www.hikaro.com\
+# chkconfig:   - 85 15 \
+# description:  Nginx is an HTTP(S) server, HTTP(S) reverse \\\
+#               proxy and IMAP/POP3 proxy server\
+# processname: nginx\
+# config:      /usr/local/nginx/conf/nginx.conf\
+# pidfile:     /usr/local/nginx/logs/nginx.pid\
+\
+# Source function library.\
+. /etc/rc.d/init.d/functions\
+\
+\
+# Check that networking is up.\
+[ "$NETWORKING" = "no" ] && exit 0\
+\
+nginx="/usr/bin/nginx"\
+prog=$(basename $nginx)\
+\
+NGINX_CONF_FILE="/etc/nginx/nginx.conf"\
+\
+lockfile=/var/lock/subsys/nginx\
+\
+start() \{\
+    [ -x $nginx ] || exit 5\
+    [ -f $NGINX_CONF_FILE ] || exit 6\
+    echo -n $"Starting $prog: "\
+    daemon $nginx -c $NGINX_CONF_FILE\
+    retval=$?\
+  echo\
+    [ $retval -eq 0 ] && touch $lockfile\
+    return $retval\
+\}\
+\
+stop() \{\
+    echo -n $"Stopping $prog: "\
+    killproc $prog -QUIT\
+    retval=$?\
+    echo\
+    [ $retval -eq 0 ] && rm -f $lockfile\
+    return $retval\
+\}\
+\
+restart() \{\
+    configtest || return $?\
+    stop\
+    start\
+\}\
+\
+reload() \{\
+    configtest || return $?\
+    echo -n $"Reloading $prog: "\
+    killproc $nginx -HUP\
+    RETVAL=$?\
+    echo\
+\}\
+\
+force_reload() \{\
+restart\
+\}\
+\
+configtest() \{\
+  $nginx -t -c $NGINX_CONF_FILE\
+\}\
+\
+rh_status() \{\
+    status $prog\
+\}\
+\
+rh_status_q() \{\
+    rh_status >/dev/null 2>&1\
+\}\
+\
+case "$1" in\
+    start)\
+        rh_status_q && exit 0\
+        $1\
+        ;;\
+    stop)\
+        rh_status_q || exit 0\
+        $1\
+        ;;\
+    restart|configtest)\
+    $1\
+        ;;\
+    reload)\
+        rh_status_q || exit 7\
+        $1\
+        ;;\
+    force-reload)\
+        force_reload\
+        ;;\
+    status)\
+        rh_status\
+        ;;\
+    condrestart|try-restart)\
+        rh_status_q || exit 0\
+            ;;\
+    *)\
+        echo $"Usage: $0 \{start|stop|status|restart|condrestart|try-restart|reload|force-reload|configtest\}"\
+        exit 2\
+esac\
+\
+\
+---------------------------------------------------------------------------------------------------\
+\
+\pard\pardeftab720\ql\qnatural
+
+\f3\b \cf0 \ul \ulc0 cd /etc/nginx/nginx.conf
+\f2\b0 \ulnone \
+\
+#user  nobody;\
+     worker_processes  1;\
+\
+# pid of nginx master process\
+     pid /var/run/nginx.pid;\
+\
+events \{\
+         worker_connections 1024;\
+         accept_mutex off;\
+       \}\
+http \{\
+       server \{\
+                listen 80;\
+                client_max_body_size 4G;\
+                server_name _;\
+                keepalive_timeout 5;\
+\
+       # Mime-type table\
+          #include  /pkg/nginx.org/nginx/1.0.4/conf/mime.types;\
+          #include   /pkg/nginx.org/nginx/1.0.4/conf/fastcgi.conf;\
+\
+\
+#         include /pkg/nginx.org/nginx/1.0.4/conf/mime.types;\
+#         default_type       application/octet-stream;\
+\
+            location / \{\
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\
+            proxy_set_header Host $http_host;\
+            proxy_redirect off;\
+       access_log /var/log/nginx/nginx.vhost.access.log;\
+       error_log /var/log/nginx/nginx.vhost.error.log;\
+\
+\
+            if (!-f $request_filename) \{\
+                proxy_pass http://127.0.0.1:8080;\
+                break;\
+                                       \}\
+                  \}\
+            \}\
+\
+    server \{\
+             server_name localhost;\
+             listen 443;\
+             client_max_body_size 4G;\
+#             ssl    on;\
+#             ssl_certificate /srv/httpd/configuration/server.crt;\
+#             ssl_certificate_key /srv/httpd/configuration/server.key;\
+\
+### We want full access to SSL via backend ###\
+             location / \{\
+             proxy_pass  http://localhost;\
+\
+### force timeouts if one of backend is died ##\
+             proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;\
+### Set headers ####\
+             proxy_set_header Host $host;\
+             proxy_set_header X-Real-IP $remote_addr;\
+             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\
+             proxy_set_header X-Forwarded-Proto https;\
+\
+### By default we don't want to redirect it ####\
+             proxy_redirect     off;\
+             access_log /var/log/nginx/nginx.vhost.access.log;\
+             error_log /var/log/nginx/nginx.vhost.error.log;\
+### Document root #####\
+             root /srv/httpd/application/public;\
+                      \}\
+           \}\
+\}\
+\
+----------------------------------------------------------------------------------------------------------\
+\
+\pard\pardeftab720\ql\qnatural
+
+\f3\b \cf0 doinst.sh
+\f2\b0 \
+\
+#!/bin/sh\
+# Install the info files for this package\
+echo "executing doinst.sh"\
+if [ -r /pkg/nginx.org/nginx/1.1.4/conf/nginx.conf ]; then\
+cd /pkg/nginx.org/nginx/1.1.4/conf\
+mv nginx.conf /etc/nginx/\
+fi\
+if [ -x /pkg/nginx.org/nginx/1.1.4/conf/rc.nginx ]; then\
+cd /pkg/nginx.org/nginx/1.1.4/conf\
+mv rc.nginx /etc/rc.d/\
+fi\
+\
+\
+============================================================================================================\
+\
+							Kernel slackbuild\
+\
+#!/bin/sh\
+\
+# Slackware build script for kernel\
+\
+CWD=`pwd`\
+\
+SOURCE=kernel.org\
+\
+PRODUCT=kernel\
+\
+VERSION=2.6.38\
+\
+ARCH=$\{ARCH:-x86_64\}\
+BUILD=$\{BUILD:-1\}\
+if [ -z "$ARCH" ]; then\
+  case "$( uname -m )" in\
+    i?86) ARCH=i486 ;;\
+    arm*) ARCH=arm ;;\
+       *) ARCH=$( uname -m ) ;;\
+  esac\
+fi\
+$CWD\
+\
+#The install directory\
+INSTALLDIR=$CWD/package/kernel-build\
+mkdir -p $INSTALLDIR\
+\
+#The kernel Directory\
+PKG=/pkg/kernel.org/kenel/2.6.38\
+#Create the package directory\
+mkdir -p $PKG\
+PKG=/pkg/$SOURCE/$PRODUCT/$VERSION\
+mkdir -p $INSTALLDIR$PKG\
+$CWD\
+cd /tmp\
+tar -xvf linux-2.6.38.tar.gz\
+mv linux-2.6.38 /usr/src\
+cd /usr/src\
+cd linux-2.6.38\
+cp /tmp/.config /usr/src/linux-2.6.38\
+cd /usr/src/linux-2.6.38\
+make\
+make modules\
+make modules_install\
+make install\
+cd /boot\
+mkinitrd -c -m ahci:ext3 -k 2.6.38\
+cd /usr/src\
+# Create the sym link\
+cp -r linux-2.6.38 $INSTALLDIR$PKG\
+cd /lib/\
+cp -r modules/ $INSTALLDIR$PKG\
+cd /boot\
+cp -r System.map $INSTALLDIR$PKG/\
+cp -r vmlinuz $INSTALLDIR$PKG/\
+cp -r initrd-tree $INSTALLDIR$PKG/\
+\
+# Create the install directory\
+mkdir -p $INSTALLDIR/install\
+zcat $CWD/slack-desc > $PKG/install/slack-desc\
+zcat $CWD/doinst.sh.gz > $INSTALLDIR/install/doinst.sh\
+\
+# Build the package\
+cd $INSTALLDIR\
+makepkg -l y -c n $CWD/Kernel-$VERSION-$ARCH-$BUILD.tgz\
+\
+*****************************************************************************************************\
+\pard\pardeftab720\ql\qnatural
+
+\f3\b \cf0 \ul doinst.sh
+\f2\b0 \ulnone \
+\
+# Install the info files for this package\
+echo "executing doinst.sh"\
+CWD=`pwd`\
+if [ -r /pkg/kernel.org/kernel/2.6.384/linux-2.6.384 ]\
+then\
+cd /usr/src/\
+ln -sf /pkg/kernel.org/kernel/2.6.384/linux-2.6.384\
+fi\
+\
+if [ -r /pkg/kernel.org/kernel/2.6.34/modules ]\
+then\
+cd /lib/\
+ ln -sf /pkg/kernel.org/kernel/2.6.34/modules\
+fi\
+\
+\
+if [ -r /pkg/kernel.org/kernel/2.6.34/System.map ]\
+ then\
+ cd /boot/\
+  ln -sf /pkg/kernel.org/kernel/2.6.34/System.map\
+  ln -s  /pkg/kernel.org/kernel/2.6.34/vmlinuz\
+  ln -s  /pkg/kernel.org/kernel/2.6.34/initrd-tree\
+  ln -s  /pkg/kernel.org/kernel/2.6.34/initrd.gz\
+ fi\
+\
+#if [ -r /pkg/Kernel.org/Kernel/2.6.34 ]\
+# then\
+#  cd /pkg\
+#rm -rf Kernel.org\
+# fi\
+\
+==============================================================================================================\
+\
+								Apache slackbuild\
+\
+apache.slackbuild\
+\
+#!/bin/sh\
+# Copyright 2006, 2007, 2008  Patrick J. Volkerding, Sebeka, MN, USA\
+# All rights reserved.\
+#\
+# Redistribution and use of this script, with or without modification, is\
+# permitted provided that the following conditions are met:\
+#\
+# 1. Redistributions of this script must retain the above copyright\
+#    notice, this list of conditions and the following disclaimer.\
+#\
+#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED\
+#  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF\
+#  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO\
+#  EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\
+#  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\
+#  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;\
+#  OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,\
+#  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR\
+#  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF\
+#  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\
+\
+# This script was written using the one from slackbuilds.org as a reference,\
+# so thanks to Adis Nezirovic ( adis _at_ linux.org.ba ) for the original work.\
+\
+\
+PKGNAM=httpd\
+VERSION=$\{VERSION:-2.2.13\}\
+ARCH=$\{ARCH:-i486\}\
+BUILD=$\{BUILD:-1\}\
+if [ "$ARCH" = "i386" ]; then\
+  SLKCFLAGS="-O2 -march=i386 -mcpu=i686"\
+elif [ "$ARCH" = "i486" ]; then\
+  SLKCFLAGS="-O2 -march=i486 -mtune=i686"\
+elif [ "$ARCH" = "s390" ]; then\
+  SLKCFLAGS="-O2"\
+elif [ "$ARCH" = "x86_64" ]; then\
+  SLKCFLAGS="-O2"\
+fi\
+# the current directory\
+CWD=`pwd`\
+\
+\
+cd $CWD\
+tar xjvf httpd-2.2.13.tar.bz2\
+cd httpd-2.2.13\
+\
+\
+# Configure:\
+./configure \\\
+  --prefix=/pkg/apache.org/apache/2.2.13 \\\
+#  --enable-layout=Slackware-FHS \\\
+#  --with-mpm=prefork \\\
+#  --with-apr=/usr \\\
+  --with-apr-util=/usr \\\
+  --without-expat \\\
+  --enable-mods-shared=all \\\
+  --enable-so \\\
+  --enable-pie \\\
+--enable-xml \\\
+  --enable-xslt \\\
+  --enable-cgi \\\
+  --enable-ssl \\\
+  --enable-rewrite \\\
+  --enable-vhost-alias \\\
+  --enable-proxy \\\
+  --enable-proxy-http \\\
+  --enable-proxy-ftp \\\
+  --enable-proxy-balancer \\\
+  --enable-cache \\\
+  --enable-mem-cache \\\
+  --enable-file-cache \\\
+  --enable-disk-cache \\\
+  --disable-speling \\\
+  --enable-dav \\\
+  --enable-ldap \\\
+  --enable-authnz-ldap \\\
+  --enable-authn-anon \\\
+  --enable-authn-alias \\\
+  --enable-modules=so \\\
+  --build=$ARCH-slackware-linux || exit 1\
+\
+# Build and install:\
+make -j4 || exit 1\
+make install DESTDIR=$PKG || exit 1\
+\
+rmdir $PKG/usr/bin\
+\
+# Tweak default apache configuration\
+( cd $PKG\
+  zcat $CWD/httpd.nossldefault.diff.gz | patch -p1 --verbose || exit 1\
+  zcat $CWD/httpd.runasapache.diff.gz | patch -p1 --verbose || exit 1\
+  rm -f $PKG/etc/httpd/httpd.conf~\
+) || exit 1\
+# Change config files to .new:\
+( cd $PKG/etc/httpd\
+  mv httpd.conf httpd.conf.new\
+  for file in extra/*; do\
+    mv $file "$\{file\}.new"\
+  done\
+)\
+\
+cat << EOF >> $PKG/etc/httpd/httpd.conf.new\
+\
+# Uncomment the following line to enable PHP:\
+#\
+#Include /etc/httpd/mod_php.conf\
+\
+# Uncomment the following lines to enable svn support:\
+#LoadModule dav_svn_module lib/httpd/modules/mod_dav_svn.so\
+#LoadModule authz_svn_module lib/httpd/modules/mod_authz_svn.so\
+\
+EOF\
+\
+rmdir $PKG/var/log/httpd\
+\
+mkdir -p $PKG/etc/rc.d\
+cat $CWD/rc.httpd > $PKG/etc/rc.d/rc.httpd.new\
+\
+mkdir -p $PKG/etc/logrotate.d\
+cat $CWD/logrotate.httpd > $PKG/etc/logrotate.d/httpd.new\
+\
+mkdir -p $PKG/install\
+cat $CWD/slack-desc > $PKG/install/slack-desc\
+zcat $CWD/doinst.sh.gz > $PKG/install/doinst.sh\
+\
+mkdir -p $PKG/usr/doc/$PKGNAM-$VERSION/\
+cp -a \\\
+  ABOUT_APACHE Apache.dsw BuildBin.dsp CHANGES INSTALL InstallBin.dsp LAYOUT LICENSE NOTICE NWGNUmakefile README* R\
+OADMAP VERSIONING \\\
+  $PKG/usr/doc/$PKGNAM-$VERSION\
+# Other distributions also strip the manual down to just English.\
+# If this isn't your language of choice, mea culpa.\
+( cd $PKG/srv/apache.org/htdocs/manual\
+  for file in $(find . -type f -name "*.html") ; do\
+    if [ -f $\{file\}.en ]; then\
+      cp $\{file\}.en $\{file\}\
+      rm -f $\{file\}.*\
+    fi\
+  done\
+)\
+\
+# On Slackware, the traditional location for the Apache document root has always\
+# been "/var/www/htdocs/".  We can avoid an unpleasant surprise for people by\
+# leaving things where they've always been, and comply with the FHS by providing\
+# symlinks allowing access through the FHS-approved pathnames.  KDE, for example,\
+# will look for htdig's htsearch here:  /var/www/cgi-bin/htsearch\
+#mv $PKG/srv/httpd $PKG/var/www\
+#( cd $PKG/srv\
+#  ln -sf /var/www .\
+#  ln -sf /var/www httpd\
+#)\
+\
+# OK, it's just not generally good form to put your web site in /var/www/htdocs,\
+# but people do it every day.  Like all new .new files, this won't save them this\
+# time, but if they don't learn their lesson now then it will the next time:\
+mv $PKG/srv/apache.org/htdocs/index.html $PKG/srv/apache.org/htdocs/index.html.new\
+\
+\
+\
+# Strip binaries:\
+( cd $PKG\
+  find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null\
+  find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null\
+)\
+\
+# Compress and link manpages, if any:\
+if [ -d $PKG/usr/man ]; then\
+  ( cd $PKG/usr/man\
+    for manpagedir in $(find . -type d -name "man*") ; do\
+      ( cd $manpagedir\
+        for eachpage in $( find . -type l -maxdepth 1) ; do\
+          ln -s $( readlink $eachpage ).gz $eachpage.gz\
+          rm $eachpage\
+        done\
+        gzip -9 *.*\
+     )\
+    done\
+ )\
+fi\
+\
+#exporting httpd lib files\
+\
+ln -s /pkg/apache.org/apache/2.2.13/lib/httpd/modules /usr/lib/httpd/modules\
+export APACHE_HOME=/pkg/apache.org/apache/2.2.13/lib/httpd\
+\
+cd $PKG\
+makepkg -l y -c n ../$\{PKGNAM\}-$VERSION-$ARCH-$BUILD.tgz\
+\
+**********************************************************************************************************\
+\
+doinst.sh\
+\
+#!/bin/sh\
+if [ ! -e var/log/httpd ]; then\
+  mkdir -p var/log/httpd\
+  chmod 755 var/log/httpd\
+fi\
+\
+# Don't wipe out an existing document root:\
+# if [ ! -L srv/www -a -d srv/www ]; then\
+ # mv srv/www srv/www.bak.$$\
+# fi\
+# if [ ! -L srv/httpd -a -d srv/httpd ]; then\
+#  mv srv/httpd srv/httpd.bak.$$\
+# fi\
+\
+# Once again, our intent is not to wipe out anyone's\
+# site, but building in Apache's docs tree is not as\
+# good an idea as picking a unique DocumentRoot.\
+#\
+# Still, we will do what we can here to mitigate\
+# possible site damage:\
+if [ -r srv/apache.org/htdocs/index.html ]; then\
+  if [ ! -r "var/log/packages/httpd-*upgraded*" ]; then\
+    if [ srv/apache.org/htdocs/index.html -nt var/log/packages/httpd-* ]; then\
+      cp -a srv/apache.org/htdocs/index.html srv/apache.org/htdocs/index.html.bak.$$\
+    fi\
+  fi\
+fi\
+\
+config() \{\
+  NEW="$1"\
+  OLD="`dirname $NEW`/`basename $NEW .new`"\
+ # If there's no config file by that name, mv it over:\
+  if [ ! -r $OLD ]; then\
+    mv $NEW $OLD\
+  elif [ "`cat $OLD | md5sum`" = "`cat $NEW | md5sum`" ]; then # toss the redundant copy\
+    rm $NEW\
+  fi\
+  # Otherwise, we leave the .new copy for the admin to consider...\
+\}\
+# Keep same perms on rc.httpd.new:\
+if [ -e etc/rc.d/rc.httpd ]; then\
+  cp -a etc/rc.d/rc.httpd etc/rc.d/rc.httpd.new.incoming\
+  cat etc/rc.d/rc.httpd.new > etc/rc.d/rc.httpd.new.incoming\
+  mv etc/rc.d/rc.httpd.new.incoming etc/rc.d/rc.httpd.new\
+fi\
+config etc/rc.d/rc.httpd.new\
+config etc/httpd/httpd.conf.new\
+config etc/logrotate.d/httpd.new\
+for conf_file in etc/httpd/extra/*.new; do\
+  config $conf_file\
+done\
+config srv/apache.org/htdocs/index.html.new\
+                                                                 \
+********************************************************************************************************\
+\
+
+\f3\b \ul rc.httpd\
+
+\f2\b0 \ulnone \
+#!/bin/sh\
+#\
+# /etc/rc.d/rc.httpd\
+#\
+# Start/stop/restart/graceful[ly restart]/graceful[ly]-stop\
+# the Apache (httpd) web server.\
+#\
+# To make Apache start automatically at boot, make this\
+# file executable:  chmod 755 /etc/rc.d/rc.httpd\
+#\
+# For information on these options, "man apachectl".\
+\
+case "$1" in\
+  'start')\
+    /pkg/apache.org/apache/2.2.8/usr/sbin/apachectl -k start\
+  ;;\
+  'stop')\
+    /pkg/apache.org/apache/2.2.8/usr/sbin/apachectl -k stop\
+    killall httpd\
+    rm -f /var/run/httpd/*.pid\
+  ;;\
+  'restart')\
+    /pkg/apache.org/apache/2.2.8/usr/sbin/apachectl -k restart\
+  ;;\
+  'graceful')\
+    /pkg/apache.org/apache/2.2.8/usr/sbin/apachectl -k graceful\
+  ;;\
+  'graceful-stop')\
+    /pkg/apache.org/apache/2.2.8/usr/sbin/apachectl -k graceful-stop\
+  ;;\
+  *)\
+echo "Usage: $0 \{start|stop|restart|graceful|graceful-stop\}"\
+  ;;\
+esac\
+\
+=====================================================================================================\
+\
+							nano\
+\
+
+\f3\b \ul nano.slackbuild
+\f2\b0 \ulnone \
+\
+# Build and make nano  package\
+\
+#------------------------------------------------------------------------------\
+#\
+# variable initialization\
+#\
+#------------------------------------------------------------------------------\
+\
+# current directory\
+CWD=`pwd`\
+\
+# the source of the product\
+SOURCE=gnu.org\
+\
+# the product\
+PRODUCT=nano\
+\
+# the version number\
+VERSION=2.2.3\
+\
+# the architecture\
+ARCH=$\{ARCH:-x86_64\}\
+\
+# the build number\
+BUILD=$\{BUILD:-1\}\
+\
+#------------------------------------------------------------------------------\
+#\
+# create the package directory\
+#\
+#------------------------------------------------------------------------------\
+\
+\
+# the package directory\
+PKG=/pkg/gnu.org/nano/2.2.3\
+\
+# the installation directory\
+INSTALLDIR=$CWD/package/nano\
+\
+# create the package directory\
+mkdir -p $PKG\
+\
+# move to the current directory\
+cd $CWD\
+\
+# extract the application source\
+tar -xvf $CWD/$PRODUCT-$VERSION.tar.gz || exit 1\
+\
+# move to the source folder\
+cd $PRODUCT-$VERSION || exit 1\
+\
+#------------------------------------------------------------------------------\
+#\
+# configure the app\
+#\
+#------------------------------------------------------------------------------\
+\
+./configure \\\
+ --prefix=/pkg/gnu.org/nano/2.2.3 \\\
+ --enable-nanorc \\\
+\
+# install nano\
+make install DESTDIR=$INSTALLDIR\
+\
+#cd DESTDIR=$INSTALLDIR/bin-wrappers\
+\
+mkdir -p $PKG/bin\
+\
+cd $CWD/INSTALLDIR$PKG/bin\
+cp nano $PKG/bin\
+\
+# change the package directory\
+cd $INSTALLDIR\
+\
+#Install script:\
+mkdir -p $INSTALLDIR/install\
+zcat $CWD/doinst.sh.gz > $INSTALLDIR/install/doinst.sh\
+#cat $CWD/slack-desc > $INSTALLDIR/install/slack-desc\
+\
+# build the package\
+makepkg -l n -c n $CWD/$PRODUCT-$VERSION-x86_64.tgz\
+\
+*****************************************************************************************************\
+\
+doinst.sh\
+\
+# Install the info files for this package\
+echo "executing doinst.sh"\
+\
+CWD=`pwd`\
+\
+if [ -r /pkg/gnu.org/nano/2.2.3/bin/nano ]\
+then\
+ cd usr/bin\
+ ln -sf /pkg/gnu.org/nano/2.2.3/bin/nano\
+else\
+ if [ -r /pkg/gnu.org/nano/2.2.3/bin/nano  ]\
+ then\
+  cd /usr/bin\
+  ln -sf /pkg/gnu.org/nano/2.2.3/bin/nano  ]\
+ fi\
+fi\
+\
+\
+============================================================================================================\
+\
+								Ruby\
+\
+ruby.slack\
+\
+# Build and make ruby package\
+\
+#------------------------------------------------------------------------------\
+#\
+# variable initialization\
+#\
+#------------------------------------------------------------------------------\
+\
+# current directory\
+CWD=`pwd`\
+\
+# the source of the product\
+SOURCE=ruby-lang.org\
+\
+# the product\
+PRODUCT=ruby\
+\
+# the version number\
+VERSION=1.9.2-p0\
+\
+# the architecture\
+ARCH=$\{ARCH:-x86_64\}\
+\
+# the build number\
+BUILD=$\{BUILD:-1\}\
+\
+#------------------------------------------------------------------------------\
+#\
+# create the package directory\
+#\
+#------------------------------------------------------------------------------\
+\
+# the package directory\
+PKG=/pkg/ruby-lang.org/ruby/1.9.2\
+\
+# the installation directory\
+INSTALLDIR=$CWD/package/ruby\
+\
+# create the package directory\
+mkdir -p $PKG\
+mkdir -p $INSTALLDIR\
+#\
+# build the package\
+#\
+# move to the current directory\
+cd $CWD\
+\
+\
+# extract the application source\
+tar -xvf $CWD/$PRODUCT-$VERSION.tar.bz2 || exit 1\
+\
+# move to the source folder\
+cd $PRODUCT-$VERSION || exit 1\
+\
+#------------------------------------------------------------------------------\
+#\
+# configure the app\
+#\
+#------------------------------------------------------------------------------\
+\
+./configure \\\
+ --prefix=/pkg/ruby-lang.org/ruby/1.9.2 \\\
+ --enable-shared \\\
+ --enable-install-doc \\\
+ --with-readline\
+\
+\
+# install ruby\
+make\
+make install DESTDIR=$INSTALLDIR\
+\
+# install docs\
+# create the directory to store documents\
+mkdir -p $INSTALLDIR$PKG/doc/$PRODUCT-$VERSION/Docs\
+\
+cd $CWD\
+cd ruby-1.9.2-p0\
+cp bin $INSTALLDIR\
+cd /usr/local/bin\
+cp ruby $INSTALLDIR/bin\
+\
+# create the install directory and copy the slack-desc into it\
+mkdir -p $INSTALLDIR/install\
+zcat $CWD/doinst.sh.gz > $INSTALLDIR/install/doinst.sh\
+cat $CWD/slack-desc > $INSTALLDIR/install/slack-desc\
+\
+# change the package directory\
+cd $INSTALLDIR\
+\
+# build the package\
+makepkg -l n -c n $CWD/$PRODUCT-$VERSION-x86_64.tgz\
+\
+*******************************************************************************************************\
+\
+doinst.sh\
+\
+# Install the info files for this package\
+echo "executing doinst.sh"\
+\
+# get the current working directory\
+CWD=`pwd`\
+\
+if [ -r /pkg/ruby-lang.org/ruby/1.9.2/bin/ruby ]\
+then\
+ cd usr/bin\
+ ln -sf /pkg/ruby-lang.org/ruby/1.9.2/bin/ruby\
+else\
+ if [ -r /pkg/ruby-lang.org/ruby/1.9.2/lib/libruby.so.1.9.1  ]\
+ then\
+  cd /usr/lib\
+  ln -sf /pkg/ruby-lang.org/ruby/1.9.2/lib/libruby.so.1.9.1  ]\
+ fi\
+fi\
+\
+\
+==============================================================================================================\
+\
+							rc.unicorn\
+\
+#!/bin/sh\
+# Start gitserver:\
+gitserver_start() \{\
+source /etc/profile\
+if [ -x /usr/bin/unicorn_rails ]; then\
+   # If there is an old PID file (no unicorn running), clean it up:\
+      if [ -r /srv/httpd/application/tmp/pids/unicorn.pid ]; then\
+      if ! ps axc | grep unicorn 1> /dev/null 2> /dev/null ; then\
+      echo "Cleaning up old /srv/httpd/tmp/pids/unicorn.pid."\
+       rm -f /srv/httpd/application/tmp/pids/unicorn.pid\
+       fi\
+      fi\
+        cd /srv/httpd/application/\
+                unicorn_rails -c /srv/httpd/configuration/unicorn.rb -D\
+                count=`cat /etc/httpd/httpd.conf | grep -c "Include /srv/httpd/configuration/apache.conf"`\
+                 if [ "$count" -eq "0"   ]; then\
+                echo Include /srv/httpd/configuration/apache.conf >> /etc/httpd/httpd.conf\
+                 fi\
+                 apachectl stop\
+                 apachectl start\
+fi\
+   \}\
+gitserver_stop() \{\
+    # If there is no PID file, ignore this request...\
+  if [ -r /srv/httpd/application/tmp/pids/unicorn.pid ]; then\
+    killall unicorn_rails\
+      # Wait at least one minute for it to exit..\
+      for second in 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 \\\
+          0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 60 ; do\
+   if [ ! -r /srv/httpd/application/tmp/pids/unicorn.pid ]; then\
+  break;\
+     fi\
+      sleep 1\
+         done\
+       if [ "$second" = "60" ]; then\
+ echo "WARNING:  Gave up waiting for Gitserver to exit!"\
+            sleep 15\
+            fi\
+      fi\
+\}\
+\
+# Restart gitserver:\
+       gitserver_restart() \{\
+       gitserver_stop\
+gitserver_start\
+ \}\
+case "$1" in\
+        'start')\
+          gitserver_start\
+            ;;\
+            'stop')\
+              gitserver_stop\
+ ;;\
+                'restart')\
+                  gitserver_restart\
+                    ;;\
+                    *)\
+                      echo "usage $0 start|stop|restart"\
+              esac\
+\
+\
+************************************************************************************************\
+\
+/srv/httpd/configuration\
+\
+vi unicorn.rb\
+\
+rails_env = ENV['RAILS_ENV'] || 'development'\
+\
+# Working process at background 2\
+  worker_processes 2\
+  working_directory "/srv/httpd/application/"\
+\
+\
+ # Restart any workers that haven't responded in 30 seconds\
+    timeout 30\
+\
+# Listen the port\
+   listen 8080\
+listen 8001,:tcp_nopush => true\
+#Found the unicorn pid location\
+       pid "/srv/httpd/application/tmp/pids/unicorn.pid"\
+\
+ # Set the path of the log files inside the log folder of the suplugins.com application\
+\
+     stderr_path "/var/log/unicorn/unicorn.stderr.log"\
+     stdout_path "/var/log/unicorn/unicorn.stdout.log"\
+\
+======================================================================================================\
+\
+\
+							MYSQL \
+\
+myswl.slackbuild\
+\
+\
+!/bin/sh\
+# Build and install MySQL on Slackware\
+\
+# -----------------------------------------------------------------------------\
+#\
+# variable initialization\
+#\
+# -----------------------------------------------------------------------------\
+\
+# current directory\
+CWD=`pwd`\
+\
+# the source of the product\
+SOURCE=mysql.org\
+\
+# the package  name\
+PRODUCT=mysql\
+\
+# the product version\
+VERSION=5.0.51b\
+\
+# the architecture\
+ARCH=$\{ARCH:-i486\}\
+\
+# the build number\
+BUILD=$\{BUILD:-1\}\
+\
+# the package directory\
+PKG=/$SOURCE/$PRODUCT/$VERSION\
+INSTALLDIR=$CWD/package/mysql\
+\
+# -----------------------------------------------------------------------------\
+#\
+# build the package\
+#\
+# -----------------------------------------------------------------------------\
+\
+# set the slack flags\
+if [ "$ARCH" = "i386" ]; then\
+  SLKCFLAGS="-O2 -march=i386 -mcpu=i686"\
+elif [ "$ARCH" = "i486" ]; then\
+  SLKCFLAGS="-O2 -march=i486 -mtune=i686"\
+elif [ "$ARCH" = "s390" ]; then\
+  SLKCFLAGS="-O2"\
+elif [ "$ARCH" = "x86_64" ]; then\
+  SLKCFLAGS="-O2"\
+fi\
+\
+# move to the current directory\
+cd $CWD\
+\
+# remove mysql files of previous build, if any\
+rm -rf mysql-$VERSION\
+\
+# extract the source\
+tar xjvf $CWD/mysql-$VERSION.tar.bz2\
+\
+# move to the source folder\
+cd mysql-$VERSION\
+# ------------------------------------------------------------------------------\
+# \
+# configure mysql\
+# \
+# ------------------------------------------------------------------------------\
+\
+\
+# change the ownership and configure the build\
+\
+chown -R root:root .\
+find . -perm 777 -exec chmod 755 \{\} \\;\
+find . -perm 775 -exec chmod 755 \{\} \\;\
+find . -perm 666 -exec chmod 644 \{\} \\;\
+find . -perm 664 -exec chmod 644 \{\} \\;\
+find . -perm 444 -exec chmod 644 \{\} \\;\
+CFLAGS="$SLKCFLAGS" CXX=gcc CXXFLAGS="$SLKCFLAGS -felide-constructors -fno-exceptions -fno-rtti" \\\
+./configure \\\
+  --prefix=/mysql.org/mysql/5.0.51b \\\
+  --localstatedir=/var/mysql.com/mysql \\\
+  --with-mysqld-user=root \\\
+  --with-unix-socket-path=/var/mysql.com/mysql/run/mysql.sock \\\
+  --bindir=/mysql.org/mysql/5.0.51b/bin \\\
+  --libdir=/mysql.org/mysql/5.0.51b/lib \\\
+  --datadir=/mysql.org/mysql/5.0.51b \\\
+  --enable-assembler \\\
+  --with-raid \\\
+  --without-debug \\\
+  --enable-thread-safe-client \\\
+ --without-bench \\\
+  --with-extra-charsets=complex \\\
+  --with-vio \\\
+  --with-openssl \\\
+  --program-prefix="" \\\
+  --program-suffix="" \\\
+  $ARCH-slackware-linux\
+#\
+# --without-readline\
+\
+\
+# build mysql\
+make -j3 || exit\
+\
+# create the install directory\
+#mkdir -p $PKG\
+\
+# install mysql\
+make install DESTDIR=$INSTALLDIR\
+\
+#------------------------------------------------------------------------------\
+#\
+# create the mysql package\
+#\
+#------------------------------------------------------------------------------\
+\
+# Strip ELF objects:\
+( cd $INSTALLDIR$PKG\
+  find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null\
+  find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null\
+)\
+\
+# copy the cnf files\
+mkdir -p $INSTALLDIR$PKG/etc\
+( cd support-files\
+  cp my-huge.cnf my-large.cnf my-medium.cnf my-small.cnf $INSTALLDIR$PKG/etc )\
+\
+\
+# install docs\
+mkdir -p $INSTALLDIR$PKG/doc/mysql-$VERSION/Docs\
+\
+# Don't need the (huge) INSTALL-SOURCE... the source is installed already.\
+cp -a COPYING* MIRRORS README $INSTALLDIR$PKG/doc/mysql-$VERSION\
+( cd Docs\
+  cp -a INSTALL-BINARY *.html *.txt Flags \\\
+    $INSTALLDIR$PKG/doc/mysql-$VERSION/Docs )\
+\
+\
+# Also too large to justify since the .html version is right there:\
+rm $INSTALLDIR$PKG/doc/mysql-$VERSION/Docs/manual.txt\
+find $INSTALLDIR$PKG/doc/mysql-$VERSION -type f -exec chmod 644 \{\} \\;\
+\
+# the path where mysql lib is stored\
+mkdir -p $INSTALLDIR$PKG/lib/mysql\
+chown root.root $INSTALLDIR$PKG/lib/mysql\
+chmod 750 $INSTALLDIR$PKG/lib/mysql\
+\
+# this is where the socket is stored\
+mkdir -p /var/mysql.com/mysql/run\
+chown root.root /var/mysql.com/mysql/run\
+chmod 755 /var/mysql.com/mysql/run\
+\
+\
+# Do not include the test suite:\
+rm -r $INSTALLDIR$PKG/mysql-test\
+\
+\
+# Add init script:\
+mkdir -p $INSTALLDIR$PKG/etc/rc.d\
+# This is intentionally chmod 644.\
+zcat $CWD/rc.mysqld.gz > $INSTALLDIR$PKG/etc/rc.d/rc.mysqld\
+\
+\
+# Install script:\
+mkdir -p $INSTALLDIR/install\
+zcat $CWD/doinst.sh.gz > $INSTALLDIR/install/doinst.sh\
+cat $CWD/slack-desc > $INSTALLDIR/install/slack-desc\
+# Add some handy library symlinks:\
+if [ -r $INSTALLDIR$PKG/lib/mysql/libmysqlclient.so.15 ]; then\
+ ( cd $INSTALLDIR$PKG/lib\
+   rm -f libmysqlclient.so libmysqlclient.so.15\
+   ln -sf mysql/libmysqlclient.so .\
+   ln -sf mysql/libmysqlclient.so.15 .\
+ )\
+else\
+   echo symlink exited\
+  exit 1\
+fi\
+\
+# create sym links to bin and lib dir\
+if [ -r $INSTALLDIR$PKG/bin/mysql ]; then\
+ ( cd /usr/bin\
+   ln -sf $INSTALLDIR$PKG/bin/mysql\
+ )\
+else\
+ echo "bin symlink exited"\
+ exit 1\
+fi\
+\
+\
+rm -f $INSTALLDIR$PKG/info/dir\
+gzip -9 $INSTALLDIR$PKG/info/*\
+gzip -9 $INSTALLDIR$PKG/man/man?/*.?\
+# Build package:\
+cd $INSTALLDIR\
+makepkg -l y -p -c n $CWD/mysql-$VERSION-$ARCH-$BUILD.tgz\
+\
+if [ "$1" == "--cleanup" ]; then\
+   cd $CWD\
+   rm -rf mysql-$VERSION\
+fi\
+\
+#------------------------------------------------------------------------------\
+                                                                                          \
+\
+doinst.sh\
+\
+\
+( cd mysql.org/mysql/5.0.51b/lib ; rm -rf libmysqlclient.so )\
+( cd mysql.org/mysql/5.0.51b/lib ; ln -sf mysql/libmysqlclient.so libmysqlclient.so )\
+( cd mysql.org/mysql/5.0.51b/lib ; rm -rf libmysqlclient.so.15 )\
+( cd mysql.org/mysql/5.0.51b/lib ; ln -sf mysql/libmysqlclient.so.15 libmysqlclient.so.15 )\
+( cd mysql.org/mysql/5.0.51b/lib/mysql ; rm -rf libmysqlclient.so )\
+( cd mysql.org/mysql/5.0.51b/lib/mysql ; ln -sf libmysqlclient.so.15.0.0 libmysqlclient.so )\
+( cd mysql.org/mysql/5.0.51b/lib/mysql ; rm -rf libmysqlclient_r.so )\
+( cd mysql.org/mysql/5.0.51b/lib/mysql ; ln -sf libmysqlclient_r.so.15.0.0 libmysqlclient_r.so )\
+( cd mysql.org/mysql/5.0.51b/lib/mysql ; rm -rf libmysqlclient_r.so.15 )\
+( cd mysql.org/mysql/5.0.51b/lib/mysql ; ln -sf libmysqlclient_r.so.15.0.0 libmysqlclient_r.so.15 )\
+( cd mysql.org/mysql/5.0.51b/lib/mysql ; rm -rf libmysqlclient.so.15 )\
+( cd mysql.org/mysql/5.0.51b/lib/mysql ; ln -sf libmysqlclient.so.15.0.0 libmysqlclient.so.15 )\
+\
+# Install the info files for this package\
+echo "executing doinst.sh"\
+\
+# get the current working directory\
+CWD=`pwd`\
+\
+if [ -x usr/bin/install-info ]\
+then\
+   usr/bin/install-info --info-dir=usr/info usr/info/mysql.info.gz 2>dev/null\
+else\
+ if [ -x /usr/bin/install-info ]\
+ then\
+  /usr/bin/install-info --info-dir=/usr/info /usr/info/mysql.info.gz 2>/dev/null\
+ fi\
+fi\
+if [ -r /mysql.org/mysql/5.0.51b/bin/mysql ]\
+then\
+ cd usr/bin\
+ln -sf /mysql.org/mysql/5.0.51b/bin/mysql\
+else\
+ if [ -r /mysql.org/mysql/5.0.51b/bin/mysql ]\
+ then\
+  cd /usr/bin\
+  ln -sf /mysql.org/mysql/5.0.51b/bin/mysql ]\
+ fi\
+fi\
+\
+# change the directory\
+cd $CWD\
+\
+echo "Copying files to etc..."\
+# does the file exists as an executable file in /etc/rc.d path\
+if [ ! -x etc/rc.d/rc.mysqld ]; then\
+\
+ # if not...copy it to the /etc/rc.d directory\
+ if [ -f mysql.org/mysql/5.0.51b/etc/rc.d/rc.mysqld ]; then\
+   cp mysql.org/mysql/5.0.51b/etc/rc.d/rc.mysqld  etc/rc.d/rc.mysqld\
+   chmod +x etc/rc.d/rc.mysqld\
+   echo "rc.mysqld copied to etc directory in /mnt/slack..."\
+ fi\
+else\
+ if [ ! -x /etc/rc.d/rc.mysqld ]; then\
+   if [ -f mysql.org/mysql/5.0.51b/etc/rc.d/rc.mysqld ]; then\
+      cp /mysql.org/mysql/5.0.51b/etc/rc.d/rc.mysqld /etc/rc.d/rc.mysqld\
+      chmod +x /etc/rc.d/rc.mysqld\
+      echo "rc.mysqld copied to etc directory..."\
+fi\
+ fi\
+fi\
+\
+# create the dir\
+if [ ! -d var/mysql.com/mysql/run ]; then\
+ mkdir -p var/mysql.com/mysql/run\
+ echo "db dir created in /mnt/slack..."\
+else\
+ if [ ! -d /var/mysql.com/mysql/run ]; then\
+  mkdir -p /var/mysql.com/mysql/run\
+  echo "db dir created in root folder..."\
+ fi\
+fi\
+\
+# install the mysql db\
+if [ -x mysql.org/mysql/5.0.51b/bin/mysql_install_db ]; then\
+ mysql.org/mysql/5.0.51b/bin/mysql_install_db\
+ echo "Mysql db installed in /mnt/slack..."\
+else\
+\
+ if [ -x mysql.org/mysql/5.0.51b/bin/mysql_install_db ]; then\
+ mysql.org/mysql/5.0.51b/bin/mysql_install_db\
+  echo "Mysql db installed in root folder..."\
+ fi\
+fi\
+\
+# start the mysqld\
+if [ -x mysql.org/mysql/5.0.51b/etc/rc.d/rc.mysqld ]; then\
+   echo "Mysqld started from /mnt/slack..."\
+   mysql.org/mysql/5.0.51b/etc/rc.d/rc.mysqld start\
+else\
+ if [ -x mysql.org/mysql/5.0.51b/etc/rc.d/rc.mysqld ]; then\
+   echo "Mysqld started from root ....."\
+   mysql.org/mysql/5.0.51b/etc/rc.d/rc.mysqld start\
+ fi\
+fi\
+\
+if [ $ROOT ]; then\
+  cd $ROOT\
+else\
+ cd $CWD\
+fi\
+\
+******************************************************************************************************\
+\
+rc.mysqld.com\
+\
+#!/bin/sh\
+# Start/stop/restart mysqld.\
+#\
+# Copyright 2003 Patrick J. Volkerding, Concord, CA\
+# Copyright 2003 Slackware Linux, Inc., Concord, CA\
+#\
+# This program comes with NO WARRANTY, to the extent permitted by law.\
+# You may redistribute copies of this program under the terms of the\
+# GNU General Public License.\
+\
+# To start MySQL automatically at boot, be sure this script is executable:\
+# chmod 755 /etc/rc.d/rc.mysqld\
+\
+# Before you can run MySQL, you must have a database.  To install an initial\
+# database, do this as root:\
+#\
+#   su - mysql\
+#   mysql_install_db\
+#\
+# Note that step one is becoming the mysql user.  It's important to do this\
+# before making any changes to the database, or mysqld won't be able to write\
+# to it later (this can be fixed with 'chown -R mysql.mysql /var/lib/mysql').\
+\
+# To allow outside connections to the database comment out the next line.\
+# If you don't need incoming network connections, then leave the line\
+# uncommented to improve system security.\
+SKIP="--skip-networking"\
+\
+# Start mysqld:\
+mysqld_start() \{\
+  if [ !  -d /var/mysql.com/mysql/run ]; then\
+mkdir -p /var/mysql.com/mysql/run\
+  fi\
+  if [ ! -d /var/mysql.com/mysql/run ]; then\
+    mkdir -p /var/mysql.com/mysql/run\
+  fi\
+  if [ -x /mysql.org/mysql/5.0.51b/bin/mysql_install_db ]; then\
+    /mysql.org/mysql/5.0.51b/bin/mysql_install_db\
+  fi\
+\
+  if [ -x /mysql.org/mysql/5.0.51b/bin/mysqld_safe ]; then\
+    # If there is an old PID file (no mysqld running), clean it up:\
+    if [ -r /var/mysql.com/mysql/run/mysql/mysql.pid ]; then\
+      if ! ps axc | grep mysqld 1> /dev/null 2> /dev/null ; then\
+        echo "Cleaning up old /var/mysql.com/mysql/run/mysql/mysql.pid."\
+        rm -f /var/mysql.com/mysql/mysql.pid\
+      fi\
+    fi\
+    echo "mysqld started"\
+    /mysql.org/mysql/5.0.51b/bin/mysqld_safe --pid-file=/var/mysql.com/mysql/mysql.pid --user=root $SKIP &\
+  fi\
+\}\
+\
+# Stop mysqld:\
+mysqld_stop() \{\
+  # If there is no PID file, ignore this request...\
+  if [ -r /var/mysql.com/mysql/mysql.pid ]; then\
+killall mysqld\
+    # Wait at least one minute for it to exit, as we don't know how big the DB is...\
+    for second in 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 \\\
+      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 60 ; do\
+      if [ ! -r /var/mysql.com/mysql/mysql.pid ]; then\
+        break;\
+      fi\
+      sleep 1\
+    done\
+    if [ "$second" = "60" ]; then\
+      echo "WARNING:  Gave up waiting for mysqld to exit!"\
+      sleep 15\
+    fi\
+  fi\
+\}\
+\
+# Restart mysqld:\
+mysqld_restart() \{\
+  mysqld_stop\
+  mysqld_start\
+\}\
+\
+case "$1" in\
+'start')\
+mysqld_start\
+  ;;\
+'stop')\
+  mysqld_stop\
+  ;;\
+'restart')\
+  mysqld_restart\
+  ;;\
+*)\
+  echo "usage $0 start|stop|restart"\
+esac\
+\
+======================================================================================================\
+\
+									Imagemagick\
+\
+\
+imagemagick.slackbuild\
+\
+\
+# !/bin/sh\
+# Build and create package for ImageMagick\
+\
+#------------------------------------------------------------------------------\
+#\
+# initialize the variables\
+#\
+#------------------------------------------------------------------------------\
+\
+# the current directory\
+CWD=`pwd`\
+\
+# the source name\
+SOURCE=imagemagick.com\
+\
+# the product\
+PRODUCT=imagemagick\
+\
+# the version number\
+VERSION=6.6.7-9\
+\
+# the file version\
+FILEVERSION=6.6.7-9\
+\
+# the architecture\
+ARCH=$\{ARCH:-x86_64\}\
+\
+# the build number\
+BUILD=$\{BUILD:-1\}\
+\
+# the directory where the package is created after imagemagick is installed\
+PKG=/pkg/imagemagick.com/$PRODUCT/$VERSION\
+\
+# the directory where the package is created\
+INSTALLDIR=$CWD/package/$PRODUCT\
+\
+#------------------------------------------------------------------------------\
+#\
+# build the package\
+#\
+#------------------------------------------------------------------------------\
+\
+# move to the current directory\
+cd $CWD\
+\
+# extract the source\
+tar xvf ImageMagick.tar.gz\
+\
+# move to the source directory\
+cd ImageMagick-6.6.7-9\
+\
+#------------------------------------------------------------------------------\
+#\
+# configure ImageMagick\
+#\
+#------------------------------------------------------------------------------\
+\
+./configure \\\
+ --prefix=$PKG \\\
+ --program-prefix= \\\
+ --disable-16bit-pixel \\\
+ --with-frozenpaths=no \\\
+ --enable-static=no \\\
+ --enable-shared=yes \\\
+ --with-jpeg \\\
+ --with-jp2 \\\
+ --with-tiff \\\
+ --with-png \\\
+ --with-zlib \\\
+ --without-x \\\
+ --with-quantum-depth=8 \\\
+ --without-perl \\\
+ --disable-openmp \\\
+ --without-gcc \\\
+ --without-magick-plus-plus \\\
+ --without-threads\
+\
+\
+# build imagemagick\
+make -j4 2> $CWD/make.err || exit\
+\
+# install imagemagick\
+make install DESTDIR=$INSTALLDIR\
+\
+\
+#------------------------------------------------------------------------------\
+#\
+# make the package\
+#\
+#------------------------------------------------------------------------------\
+\
+# create the install directory\
+mkdir -p $INSTALLDIR/install\
+\
+# move the slack-desc file to the install directory\
+cat $CWD/slack-desc > $INSTALLDIR/install/slack-desc\
+\
+# gzip the man pages\
+gzip -9 $INSTALLDIR$PKG/usr/man/man?/*.?\
+\
+# move to the install directory\
+cd $INSTALLDIR\
+\
+# make the package\
+makepkg -l y -c n $CWD/imagemagick-$VERSION-$ARCH-$BUILD.tgz\
+\
+\
+------------------------------------------------------------------------------------------------------------\
+\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+
+\f0\b \cf0 \ul Give this command for tuning for mysql remote server\
+
+\b0 \ulnone \
+ssh -i id_dbserver -N -f -L 3307:localhost:3306 root@address\
+\
+
+\b \ul Solr tunneling:-
+\b0 \ulnone \
+\
+ssh -v -N -f -L 8080:localhost:8080 root@174.129.248.175
+\f2 \
+\pard\pardeftab720\ql\qnatural
+\cf0                  \
+\
+\
+\pard\pardeftab720\ql\qnatural
+
+\f0 \cf0 \
+}
