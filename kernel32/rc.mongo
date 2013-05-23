@@ -1,0 +1,12 @@
+!/bin/sh
+case "$1" in
+start) /pkg/mongodb.org/mongodb/1.8.1/bin/mongod --config /etc/mongodb/mongodb.conf
+;;
+stop)  killall mongod
+;;
+esac
+
+
+
+
+

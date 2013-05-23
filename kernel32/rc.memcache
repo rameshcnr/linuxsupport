@@ -1,0 +1,8 @@
+#!/bin/sh
+case "$1" in
+start) /pkg/memcache.com/memcached/1.4.5/bin/memcached -d -u root -m 512  -p 11211
+;;
+stop)  killall memcached
+;;
+esac
+

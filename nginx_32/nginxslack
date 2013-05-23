@@ -1,0 +1,66 @@
+#!/bin/sh
+
+#The current directory
+CWD=`pwd`
+
+# The source Directory
+SOURCE=nginx.org
+
+#The Product
+PRODUCT=nginx
+
+#The Version
+VERSION=1.1.0
+
+ARCH=${ARCH:-i486}
+BUILD=${BUILD:-1}
+
+#The package Directory
+PKG=/pkg/nginx.org/nginx/1.1.0
+
+#The Installation Directory
+INSTALLDIR=$CWD/package/$PRODUCT
+mkdir -p $INSTALLDIR/$PRODUCT
+mkdir -p $INSTALLDIR$PKG
+
+# Create the package directory
+mkdir -p $PKG
+
+#Move the Current Directory
+cd $CWD
+
+#Extract the application
+tar -xvf nginx-1.1.0.tar.gz
+
+#Move to the source folder
+cd nginx-1.1.0
+
+#---------------------------------------------------------------------------
+#
+#                       Configure the application
+#
+#---------------------------------------------------------------------------
+
+# Configure:
+./configure \
+  --prefix=/pkg/nginx.org/nginx/1.1.0 \
+  --with-http_stub_status_module \
+  --with-http_ssl_module
+
+# Build and install:
+make 
+make install DESTDIR=$INSTALLDIR 
+
+cd $CWD
+cp rc.nginx $INSTALLDIR$PKG/conf
+cp nginx.conf $INSTALLDIR$PKG/conf
+
+# change the package directory
+cd $INSTALLDIR
+mkdir install
+
+zcat $CWD/doinst.sh.gz > $INSTALLDIR/install/doinst.sh
+cat $CWD/slack-desc > $INSTALLDIR/install/slack-desc
+
+makepkg -l y -c n $CWD/$PRODUCT-$VERSION-i486.tgz
+

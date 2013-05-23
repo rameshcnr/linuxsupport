@@ -1,0 +1,8 @@
+#!/bin/sh
+case "$1" in
+start) /pkg/openvpn.org/openvpn/2.2.2/sbin/openvpn --config /etc/openvpn/server.conf --daemon
+;;
+stop)  killall openvpn
+;;
+esac
+

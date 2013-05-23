@@ -1,0 +1,41 @@
+#!/bin/sh -e
+
+#################################
+## Script rewriten by Dr Small ##
+#################################
+
+#PGVER='8.2'
+BINPATH="/pkg/postgresql.org/postgresql/9.2.3/bin/"
+PGUSER='postgres'
+PGLOG='/tmp/pgsql.log'
+PGDIR='/var/log/postgres'
+
+start()
+{
+cd $BINPATH
+su $PGUSER -c "./pg_ctl -D $PGDIR -l $PGLOG start"
+}
+
+stop()
+{
+cd $BINPATH
+su $PGUSER -c "./pg_ctl -D $PGDIR -l $PGLOG stop"
+}
+
+
+case "$1" in
+start)
+start
+;;
+stop)
+stop
+;;
+restart)
+stop
+start
+;;
+*)
+echo "Usage: $0 {start|stop|restart}"
+exit 1
+;;
+esac
